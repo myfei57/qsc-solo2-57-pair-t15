@@ -255,14 +255,30 @@ class Platform:
             summary["stage"] = report["stage"]
         if report.get("reason"):
             summary["reason"] = report["reason"]
-        event_action = f"{operation}_{'complete' if report.get('ok') else 'incomplete'}"
+        # 收尾结论、泵状态与审计三处口径一致：有结论的编排（如二次网循环）把
+        # 结论、部分失败标记与泵停稳标记原样带进汇总事件。
+        for key in ("conclusion", "partial", "pump_idle", "closeout_mode", "valve_closed"):
+            if key in report:
+                summary[key] = report[key]
+        if operation == "secondary_cycle":
+            event_action = f"secondary_cycle_{report.get('conclusion', 'incomplete')}"
+            message = (
+                "二次网循环正常收尾"
+                if report.get("conclusion") == "completed"
+                else "二次网循环中断收尾"
+            )
+            severity = "notice" if report.get("conclusion") == "completed" else "warning"
+        else:
+            event_action = f"{operation}_{'complete' if report.get('ok') else 'incomplete'}"
+            severity = "notice" if report.get("ok") else "warning"
+            message = f"{operation} 完成" if report.get("ok") else f"{operation} 未完成"
         self.bus.publish(
             Event.of(
                 "audit",
                 "audit",
                 event_action,
-                severity="notice" if report.get("ok") else "warning",
-                message=f"{operation} 完成" if report.get("ok") else f"{operation} 未完成",
+                severity=severity,
+                message=message,
                 **summary,
             )
         )
@@ -307,6 +323,7 @@ class Platform:
                 outdoor_c,
                 self.clock.now(),
                 demand_pct,
+                bus=self.bus,
             )
             summary = self._record_operation(op_id, "startup", report)
             self._operations += 1
@@ -438,8 +455,14 @@ class Platform:
             )
             return report
 
-    def secondary_cycle(self, dt: float = 1.0) -> dict:
-        """跑一个二次网循环（结束前泵一定停稳）。"""
+    def secondary_cycle(
+        self, dt: float = 1.0, *, closeout_mode: str = "in_place", safe_valve_pct: float = 100.0
+    ) -> dict:
+        """跑一个二次网循环（结束前泵一定停稳，返回收尾结论）。
+
+        中断收尾方式按工况定：``in_place`` 就地停泵再关阀；``retreat`` 先退回安全
+        阀位再停泵关阀。
+        """
 
         with self._lock:
             op_id = self.ids.next()
@@ -449,6 +472,9 @@ class Platform:
                 self.valves[sorted(self.valves)[0]],
                 self.durable,
                 dt,
+                mode=closeout_mode,
+                safe_valve_pct=safe_valve_pct,
+                bus=self.bus,
             )
             summary = self._record_operation(op_id, "secondary_cycle", report)
             self._operations += 1

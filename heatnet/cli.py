@@ -118,7 +118,10 @@ def _cmd_demo(args: argparse.Namespace) -> int:
         "last_cycle": cycles[-1],
         "calibration": calibration,
         "retrofit": retrofit,
-        "secondary": {key: secondary[key] for key in ("ok", "flow_t_h", "pump_idle", "violations")},
+        "secondary": {
+            key: secondary[key]
+            for key in ("ok", "conclusion", "partial", "flow_t_h", "pump_idle", "violations")
+        },
         "heat": heat,
         "settled": settled,
         "split": split,

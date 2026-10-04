@@ -295,7 +295,17 @@ class Api:
         return self._platform.retrofit_baseline(target)
 
     def _secondary_cycle(self, params: dict, body: dict) -> dict:
-        return self._platform.secondary_cycle(_as_float(body, "dt", 1.0))
+        closeout_mode = str(body.get("closeout_mode", "in_place"))
+        if closeout_mode not in ("in_place", "retreat"):
+            raise PlantError(
+                f"收尾方式必须是 in_place 或 retreat：{closeout_mode!r}", component="console"
+            )
+        safe_valve_pct = _as_float(body, "safe_valve_pct", 100.0)
+        return self._platform.secondary_cycle(
+            _as_float(body, "dt", 1.0),
+            closeout_mode=closeout_mode,
+            safe_valve_pct=safe_valve_pct,
+        )
 
     def _meter(self, params: dict, body: dict) -> dict:
         return self._platform.collect_heat(

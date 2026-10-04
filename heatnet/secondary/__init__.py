@@ -8,15 +8,31 @@
 from __future__ import annotations
 
 from .balance import BalanceReport, hydraulic_balance
-from .cycle import run_cycle
+from .closeout import (
+    CLOSEOUT_IN_PLACE,
+    CLOSEOUT_RETREAT,
+    close_out,
+)
+from .cycle import (
+    CONCLUSION_COMPLETED,
+    CONCLUSION_INTERRUPTED,
+    REQUIRED_READINGS,
+    run_cycle,
+)
 from .loop import SecondaryLoop
 from .makeup import makeup_then_pressurise
 from .state import SecondarySnapshot
 
 __all__ = [
     "BalanceReport",
+    "CLOSEOUT_IN_PLACE",
+    "CLOSEOUT_RETREAT",
+    "CONCLUSION_COMPLETED",
+    "CONCLUSION_INTERRUPTED",
+    "REQUIRED_READINGS",
     "SecondaryLoop",
     "SecondarySnapshot",
+    "close_out",
     "hydraulic_balance",
     "makeup_then_pressurise",
     "run_cycle",

@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 from ..errors import PlantError
+from ..eventbus import EventBus
 from ..primary.network import PrimaryNetwork
 from ..pump.pump import Pump
 from ..secondary.cycle import run_cycle
@@ -34,6 +35,9 @@ def startup_plant(
     now: float,
     demand_pct: float = 60.0,
     dt: float = 1.0,
+    *,
+    closeout_mode: str = "in_place",
+    bus: EventBus | None = None,
 ) -> dict:
     """把整条调度链从冷态带到带负荷。"""
 
@@ -88,11 +92,20 @@ def startup_plant(
     if not makeup["ok"]:
         return {"ok": False, "steps": steps, "violations": violations, "stage": "makeup"}
 
-    cycle = run_cycle(loop, pump, valve, durable, dt)
+    cycle = run_cycle(
+        loop, pump, valve, durable, dt, mode=closeout_mode, bus=bus
+    )
     steps.extend(cycle["steps"])
     violations.extend(cycle["violations"])
     if not cycle["ok"]:
-        return {"ok": False, "steps": steps, "violations": violations, "stage": "cycle"}
+        return {
+            "ok": False,
+            "steps": steps,
+            "violations": violations,
+            "stage": "cycle",
+            "conclusion": cycle["conclusion"],
+            "pump_idle": cycle["pump_idle"],
+        }
 
     return {
         "ok": not violations,

@@ -120,6 +120,41 @@ def test_api_actions_cover_queue_and_meter(platform):
     assert disturbed["disturbances"] == 1
 
 
+def test_api_secondary_cycle_reports_closeout_conclusion(platform):
+    api = Api(platform)
+    status, payload = api.handle("POST", "/api/secondary/cycle", {}, {})
+    assert status == 200
+    assert payload["conclusion"] == "completed"
+    assert payload["partial"] is False
+    assert payload["pump_idle"] is True
+    status, audit = api.handle("GET", "/api/audit", {"limit": "50"}, {})
+    assert status == 200
+    closed = [entry for entry in audit["entries"] if entry["action"] == "cycle_closed"]
+    assert len(closed) == 1
+    assert closed[0]["payload"]["conclusion"] == "completed"
+    assert closed[0]["payload"]["pump_idle"] is True
+
+
+def test_api_secondary_cycle_retreat_after_disturbance(platform):
+    api = Api(platform)
+    platform.disturb_secondary(3.0)
+    status, payload = api.handle(
+        "POST", "/api/secondary/cycle", {}, {"closeout_mode": "retreat", "safe_valve_pct": 80.0}
+    )
+    assert status == 200
+    assert payload["conclusion"] == "interrupted"
+    assert payload["closeout_mode"] == "retreat"
+    assert payload["pump_idle"] is True
+    assert payload["valve_closed"] is True
+
+
+def test_api_secondary_cycle_rejects_bad_closeout_mode(platform):
+    api = Api(platform)
+    status, payload = api.handle("POST", "/api/secondary/cycle", {}, {"closeout_mode": "fly"})
+    assert status == 409
+    assert payload["component"] == "console"
+
+
 def test_api_concurrency_trip_and_reset(platform):
     api = Api(platform)
     status, concurrency = api.handle("POST", "/api/concurrency", {}, {"rounds": 12})

@@ -255,6 +255,12 @@ class Platform:
             summary["stage"] = report["stage"]
         if report.get("reason"):
             summary["reason"] = report["reason"]
+        if report.get("conclusion"):
+            summary["conclusion"] = report["conclusion"]
+        if report.get("teardown"):
+            summary["teardown"] = report["teardown"]
+        if report.get("partial"):
+            summary["partial"] = True
         event_action = f"{operation}_{'complete' if report.get('ok') else 'incomplete'}"
         self.bus.publish(
             Event.of(

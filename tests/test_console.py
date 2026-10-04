@@ -120,6 +120,16 @@ def test_api_actions_cover_queue_and_meter(platform):
     assert disturbed["disturbances"] == 1
 
 
+def test_api_secondary_cycle_reports_conclusion(platform):
+    api = Api(platform)
+    status, payload = api.handle("POST", "/api/secondary/cycle", {}, {"dt": 1.0})
+    assert status == 200
+    assert payload["conclusion"] == "completed"
+    assert payload["teardown"] == "hold"
+    assert payload["pump_idle"] is True
+    assert payload["state_persisted"] is True
+
+
 def test_api_concurrency_trip_and_reset(platform):
     api = Api(platform)
     status, concurrency = api.handle("POST", "/api/concurrency", {}, {"rounds": 12})

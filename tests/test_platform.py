@@ -148,3 +148,39 @@ def test_note_error_writes_audit_entry(platform):
     assert record["component"] == "source"
     assert platform.audit.summary()["by_severity"]["warning"] == 1
     assert platform.audit.count("error") == 1
+
+
+def test_secondary_cycle_conclusion_consistent_across_report_state_and_audit(platform):
+    platform.disturb_secondary(3.0)
+    report = platform.secondary_cycle()
+    assert report["ok"] is False
+    assert report["conclusion"] == "interrupted"
+    assert report["teardown"] == "safe_valve"
+    assert report["pump_idle"] is True
+
+    saved = platform.durable.load("secondary/320")
+    assert saved["running"] is False
+    assert saved["conclusion"] == report["conclusion"]
+    assert saved["teardown"] == report["teardown"]
+
+    summaries = [
+        entry
+        for entry in platform.audit.entries(limit=50)
+        if entry["action"] == "secondary_cycle_incomplete"
+    ]
+    assert summaries
+    assert summaries[0]["payload"]["conclusion"] == report["conclusion"]
+    assert summaries[0]["payload"]["teardown"] == report["teardown"]
+
+
+def test_secondary_cycle_normal_conclusion_reaches_audit(platform):
+    report = platform.secondary_cycle()
+    assert report["ok"] is True
+    assert report["conclusion"] == "completed"
+    summaries = [
+        entry
+        for entry in platform.audit.entries(limit=50)
+        if entry["action"] == "secondary_cycle_complete"
+    ]
+    assert summaries
+    assert summaries[0]["payload"]["conclusion"] == "completed"

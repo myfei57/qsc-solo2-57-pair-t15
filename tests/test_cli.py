@@ -19,6 +19,7 @@ def test_demo_runs_end_to_end(tmp_path, capsys):
     assert payload["dispatch"]["ok"] is True
     assert payload["dispatch"]["planned"] == 6
     assert payload["secondary"]["pump_idle"] is True
+    assert payload["secondary"]["conclusion"] == "completed"
     assert payload["retrofit"]["ok"] is True
     assert payload["split"]["zone"]["stations"] == ["st02", "st03"]
     assert payload["replayed"]["replayed"] == 2
